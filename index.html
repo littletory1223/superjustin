@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>슈퍼 저스틴 어드벤처 - 보스 수정 & 버그 해결</title>
+    <style>
+        body {
+            text-align: center;
+            background-color: #222;
+            color: white;
+            font-family: sans-serif;
+            margin: 0;
+        }
+
+        .screen {
+            display: none;
+            padding: 20px;
+        }
+
+        .active {
+            display: block;
+        }
+
+        canvas {
+            border: 5px solid #fff;
+            border-radius: 10px;
+            transition: background 0.5s;
+        }
+
+        button {
+            padding: 15px 25px;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 8px;
+            border: none;
+            margin: 10px;
+            background: #ffeb3b;
+            font-weight: bold;
+        }
+
+        #ui-layer {
+            font-size: 20px;
+            font-weight: bold;
+            color: yellow;
+            margin: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 10px;
+            display: inline-block;
+        }
+
+        #item-alert {
+            font-size: 24px;
+            color: #00ff00;
+            height: 35px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="login-screen" class="screen active">
+        <h1>🌟 슈퍼 저스틴 어드벤처 🌟</h1>
+        <input type="text" id="user-id" placeholder="아이디 입력" style="padding: 10px; font-size: 18px;">
+        <br><button onclick="goToMenu()">로그인</button>
+    </div>
+
+    <div id="menu-screen" class="screen">
+        <h2 id="welcome-msg">환영합니다!</h2>
+        <button onclick="showScreen('tree-screen')">🌲 트리 레벨 (본게임)</button>
+        <button onclick="startMode('free')" style="background:#2196F3; color:white;">🎮 프리 레벨 (연습 - 무적)</button>
+        <button onclick="startMode('ai')" style="background:#9c27b0; color:white;">🤖 AI 데모</button>
+    </div>
+
+    <div id="tree-screen" class="screen">
+        <h2>레벨을 선택하세요</h2>
+        <button onclick="startMode('play', 1)">Level 1</button>
+        <button onclick="startMode('play', 5)">Level 5</button>
+        <button onclick="startMode('play', 10)">Level 10</button>
+        <br><button onclick="showScreen('menu-screen')" style="background:#555; color:white;">뒤로가기</button>
+    </div>
+
+    <div id="game-screen" class="screen">
+        <div id="ui-layer">
+            모드: <span id="mode-txt"></span> |
+            레벨: <span id="lv-txt"></span> |
+            HP: <span id="hp-txt" style="color: #ff4d4d;">100</span> |
+            장소: <span id="env-txt" style="color: #fff;">맑은 숲</span>
+        </div>
+        <div id="item-alert">방향키 이동, 스페이스바 점프!</div>
+        <canvas id="gameCanvas" width="800" height="400" style="background: #5c94fc;"></canvas>
+        <br><button onclick="showScreen('menu-screen')" style="background:#f44336; color:white;">그만하기</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let player = { x: 50, y: 310, w: 40, h: 40, dy: 0, jumping: false };
+        let box = { x: 350, y: 150, w: 50, h: 50 };
+        let hp = 100, currentLv = 1, subLv = 1, mode = "", aniId, keys = {};
+        let isHurt = false;
+
+        let killCount = 0;
+        let isBoss = false;
+        let bossHp = 0;
+
+        const items = ["🌟 파워볼 스타", "👓 매직 안경", "⏳ 마이너스 시계", "💢 가시 폭탄", "💰 코인 주머니"];
+
+        const monsterTypes = [
+            { color: "black", speed: 3, w: 40, h: 40 },
+            { color: "green", speed: 2, w: 50, h: 30 },
+            { color: "purple", speed: 4, w: 30, h: 50 }
+        ];
+        let enemy = { x: 800, y: 310, w: 40, h: 40, speed: 3, color: "black" };
+
+        const environments = [
+            { bg: "#5c94fc", floor: "#8B4513", name: "맑은 숲" },
+            { bg: "#00004d", floor: "#2F4F4F", name: "별이 빛나는 밤" },
+            { bg: "#ff7f50", floor: "#800000", name: "노을빛 사막" },
+            { bg: "#2E8B57", floor: "#006400", name: "깊고 어두운 숲" },
+            { bg: "#4B0082", floor: "#483D8B", name: "신비한 동굴" }
+        ];
+        let currentEnv = environments[0];
+
+        function spawnMonster() {
+            if (killCount >= 2 && subLv < 3) {
+                subLv++;
+                killCount = 0;
+            }
+
+            document.getElementById('lv-txt').innerText = currentLv + "-" + subLv;
+
+            if (subLv === 3) {
+                isBoss = true;
+                bossHp = 2; // ★ 사용자님 요청: 보스 체력 2번 밟기로 수정!
+                enemy.color = "darkred";
+                enemy.w = 70; // ★ 사용자님 요청: 보스 크기 70으로 수정!
+                enemy.h = 70;
+                enemy.speed = 2;
+                enemy.x = canvas.width + 50;
+                enemy.y = 350 - enemy.h;
+
+                currentEnv = environments[4];
+                document.getElementById('item-alert').innerText = "⚠️ 앗! 대장 몬스터가 나타났다! (2번 밟으세요!)";
+            } else {
+                isBoss = false;
+                let randomMob = monsterTypes[Math.floor(Math.random() * monsterTypes.length)];
+                enemy.color = randomMob.color;
+                enemy.speed = randomMob.speed;
+                enemy.w = randomMob.w;
+                enemy.h = randomMob.h;
+                enemy.x = canvas.width + 50;
+                enemy.y = 350 - enemy.h;
+
+                currentEnv = environments[Math.floor(Math.random() * 4)];
+            }
+
+            canvas.style.background = currentEnv.bg;
+            document.getElementById('env-txt').innerText = currentEnv.name;
+        }
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            if (id !== 'game-screen') cancelAnimationFrame(aniId);
+        }
+
+        function goToMenu() {
+            const id = document.getElementById('user-id').value;
+            if (!id) return alert("아이디를 입력하세요!");
+            document.getElementById('welcome-msg').innerText = `${id}님, 환영합니다!`;
+            showScreen('menu-screen');
+        }
+
+        function startMode(m, lv = 1) {
+            mode = m; currentLv = lv; subLv = 1; killCount = 0; hp = 100; player.x = 50; isHurt = false;
+            document.getElementById('mode-txt').innerText = mode === 'free' ? "연습 (무적)" : "본게임";
+            document.getElementById('hp-txt').innerText = hp;
+            spawnMonster();
+            showScreen('game-screen');
+            gameLoop();
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 1. 바닥
+            ctx.fillStyle = currentEnv.floor;
+            ctx.fillRect(0, 350, canvas.width, 50);
+
+            // 2. 몬스터 이동
+            enemy.x -= (enemy.speed + (currentLv * 0.2));
+            if (enemy.x < -150) {
+                killCount++;
+                spawnMonster();
+            }
+
+            ctx.fillStyle = enemy.color;
+            ctx.fillRect(enemy.x, enemy.y, enemy.w, enemy.h);
+
+            // 3. 충돌 감지 로직
+            let isColliding = (player.x < enemy.x + enemy.w && player.x + player.w > enemy.x &&
+                player.y < enemy.y + enemy.h && player.y + player.h > enemy.y);
+
+            if (isColliding && !isHurt) {
+                // 위에서 밟았을 때
+                if (player.dy > 0 && player.y + player.h < enemy.y + 20) {
+                    player.dy = -12;
+
+                    if (isBoss) {
+                        bossHp--;
+                        if (bossHp <= 0) {
+                            document.getElementById('item-alert').innerText = "🎉 대장 몬스터 처치! 레벨 클리어!";
+                            setTimeout(() => {
+                                alert("메인 레벨 클리어! 다음 레벨로 넘어갑니다!");
+                                currentLv++;
+                                subLv = 1;
+                                killCount = 0;
+                                spawnMonster();
+                            }, 1000);
+                            enemy.x = -200;
+                        } else {
+                            document.getElementById('item-alert').innerText = `💥 대장 몬스터를 밟았다! (남은 체력: ${bossHp})`;
+                        }
+                    } else {
+                        document.getElementById('item-alert').innerText = "💥 몬스터 처치 성공!";
+                        killCount++;
+                        spawnMonster();
+                    }
+                }
+                // 옆에서 부딪혔을 때 (데미지)
+                else {
+                    if (mode === 'play') {
+                        let damage = isBoss ? (10 + currentLv) : (5 + currentLv);
+                        hp -= damage;
+                        isHurt = true;
+                        player.x -= 60; // 뒤로 튕겨남
+
+                        // ★ 버그 수정: 마리오가 화면 왼쪽 밖으로 나가지 못하게 막기!
+                        if (player.x < 0) {
+                            player.x = 0;
+                        }
+
+                        if (hp <= 0) {
+                            hp = 0;
+                            document.getElementById('hp-txt').innerText = hp;
+                            document.getElementById('item-alert').innerText = "HP가 0이 되었습니다! 게임 오버!";
+                            setTimeout(() => { alert("게임 오버! 메뉴로 돌아갑니다."); showScreen('menu-screen'); }, 500);
+                            return;
+                        } else {
+                            document.getElementById('hp-txt').innerText = hp;
+                            document.getElementById('item-alert').innerText = `🩸 앗! 부딪혀서 HP가 ${damage} 깎였습니다!`;
+                            setTimeout(() => { isHurt = false; }, 1500);
+                        }
+                    } else if (mode === 'free') {
+                        document.getElementById('item-alert').innerText = "🛡️ 연습 모드라서 다치지 않아요!";
+                    }
+                }
+            }
+
+            // 4. 캐릭터 조작 (키보드 이동 시에도 화면 밖으로 못 나가게 방어)
+            if (mode === 'ai') {
+                player.x += 2.5;
+                if (player.x > 300 && player.x < 310 && !player.jumping) { player.dy = -15; player.jumping = true; }
+                if (player.x > canvas.width) player.x = 0;
+            } else {
+                if (keys['ArrowRight'] && player.x < canvas.width - player.w) player.x += 5; // 오른쪽 벽 방어
+                if (keys['ArrowLeft'] && player.x > 0) player.x -= 5; // ★ 왼쪽 벽 방어
+                if (keys[' '] && !player.jumping) { player.dy = -15; player.jumping = true; }
+            }
+
+            player.dy += 0.8; player.y += player.dy;
+            if (player.y > 310) { player.y = 310; player.dy = 0; player.jumping = false; }
+
+            if (!isHurt || Math.floor(Date.now() / 150) % 2 === 0) {
+                ctx.fillStyle = (mode === 'ai') ? "purple" : "red";
+                ctx.fillRect(player.x, player.y, player.w, player.h);
+            }
+
+            // 5. 물음표 박스
+            ctx.fillStyle = "yellow";
+            ctx.fillRect(box.x, box.y, box.w, box.h);
+            ctx.fillStyle = "black"; ctx.font = "30px Arial"; ctx.fillText("?", box.x + 15, box.y + 35);
+
+            if (player.x < box.x + box.w && player.x + player.w > box.x &&
+                player.y < box.y + box.h && player.y > box.y && player.dy < 0) {
+                player.dy = 5;
+                const get = items[Math.floor(Math.random() * items.length)];
+                document.getElementById('item-alert').innerText = "🎁 " + get + " 획득!";
+            }
+
+            aniId = requestAnimationFrame(gameLoop);
+        }
+
+        window.addEventListener('keydown', e => keys[e.key] = true);
+        window.addEventListener('keyup', e => keys[e.key] = false);
+    </script>
+</body>
+
+</html>
