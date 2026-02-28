@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>슈퍼 저스틴 어드벤처 - 보스 수정 & 버그 해결</title>
+    <title>슈퍼 저스틴 어드벤처 - 명예의 전당!</title>
     <style>
         body {
             text-align: center;
@@ -40,7 +40,7 @@
         }
 
         #ui-layer {
-            font-size: 20px;
+            font-size: 18px;
             font-weight: bold;
             color: yellow;
             margin: 10px;
@@ -56,6 +56,33 @@
             height: 35px;
             margin-top: 5px;
         }
+
+        /* 🏆 명예의 전당 특별 스타일 */
+        .fame-box {
+            background: rgba(0, 0, 0, 0.9);
+            border: 5px solid gold;
+            border-radius: 15px;
+            padding: 40px;
+            display: inline-block;
+            margin-top: 20px;
+            box-shadow: 0 0 20px gold;
+        }
+
+        .final-score {
+            font-size: 70px;
+            color: gold;
+            margin: 10px 0;
+            text-shadow: 2px 2px 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .ranking-list {
+            text-align: left;
+            background: #333;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 
@@ -63,35 +90,55 @@
 
     <div id="login-screen" class="screen active">
         <h1>🌟 슈퍼 저스틴 어드벤처 🌟</h1>
-        <input type="text" id="user-id" placeholder="아이디 입력" style="padding: 10px; font-size: 18px;">
+        <input type="text" id="user-id" placeholder="당신의 닉네임을 입력하세요" style="padding: 10px; font-size: 18px;">
         <br><button onclick="goToMenu()">로그인</button>
     </div>
 
     <div id="menu-screen" class="screen">
         <h2 id="welcome-msg">환영합니다!</h2>
         <button onclick="showScreen('tree-screen')">🌲 트리 레벨 (본게임)</button>
-        <button onclick="startMode('free')" style="background:#2196F3; color:white;">🎮 프리 레벨 (연습 - 무적)</button>
+        <button onclick="startMode('free')" style="background:#2196F3; color:white;">🎮 프리 레벨 (연습)</button>
         <button onclick="startMode('ai')" style="background:#9c27b0; color:white;">🤖 AI 데모</button>
     </div>
 
     <div id="tree-screen" class="screen">
-        <h2>레벨을 선택하세요</h2>
-        <button onclick="startMode('play', 1)">Level 1</button>
-        <button onclick="startMode('play', 5)">Level 5</button>
-        <button onclick="startMode('play', 10)">Level 10</button>
+        <h2>어디서부터 시작할까요?</h2>
+        <button onclick="startMode('play', 1)">Level 1 (처음부터)</button>
+        <button onclick="startMode('play', 5)">Level 5 (코인파티)</button>
+        <button onclick="startMode('play', 10)">Level 10 (최종 보스!)</button>
         <br><button onclick="showScreen('menu-screen')" style="background:#555; color:white;">뒤로가기</button>
+    </div>
+
+    <div id="fame-screen" class="screen">
+        <div class="fame-box">
+            <h2>🏆 명.예.의.전.당 🏆</h2>
+            <h3 id="clear-msg" style="color: #00ff00;"></h3>
+            <p>당신의 최종 점수</p>
+            <div class="final-score"><span id="final-score-txt">0</span>점</div>
+
+            <div class="ranking-list">
+                <p>🥇 1위: 슈퍼마스터 (999점)</p>
+                <p>🥈 2위: 별사냥꾼 (750점)</p>
+                <p style="color: yellow; font-weight: bold;">🥉 3위: <span id="player-name-txt">당신</span> (<span
+                        id="player-score-txt">0</span>점) - NEW!</p>
+            </div>
+
+            <button onclick="showScreen('tree-screen')">🔄 다시 도전하기</button>
+            <button onclick="showScreen('menu-screen')" style="background:#555; color:white;">메뉴로 가기</button>
+        </div>
     </div>
 
     <div id="game-screen" class="screen">
         <div id="ui-layer">
-            모드: <span id="mode-txt"></span> |
-            레벨: <span id="lv-txt"></span> |
-            HP: <span id="hp-txt" style="color: #ff4d4d;">100</span> |
-            장소: <span id="env-txt" style="color: #fff;">맑은 숲</span>
+            [<span id="mode-txt"></span>]
+            Lv: <span id="lv-txt"></span> |
+            HP: <span id="hp-txt" style="color: #ff4d4d;">100</span> / <span id="max-hp-txt">100</span> |
+            🏆 점수: <span id="score-txt" style="color: gold;">0</span> |
+            장소: <span id="env-txt" style="color: #fff;"></span>
         </div>
-        <div id="item-alert">방향키 이동, 스페이스바 점프!</div>
+        <div id="item-alert">방향키 이동, 스페이스바 점프! 별을 향해 가세요!</div>
         <canvas id="gameCanvas" width="800" height="400" style="background: #5c94fc;"></canvas>
-        <br><button onclick="showScreen('menu-screen')" style="background:#f44336; color:white;">그만하기</button>
+        <br><button onclick="showScreen('menu-screen')" style="background:#f44336; color:white;">게임 포기</button>
     </div>
 
     <script>
@@ -99,65 +146,95 @@
         const ctx = canvas.getContext('2d');
 
         let player = { x: 50, y: 310, w: 40, h: 40, dy: 0, jumping: false };
-        let box = { x: 350, y: 150, w: 50, h: 50 };
-        let hp = 100, currentLv = 1, subLv = 1, mode = "", aniId, keys = {};
-        let isHurt = false;
+        let maxHp = 100, hp = 100, jumpPower = -15, defense = 0, coinMultiplier = 1;
 
-        let killCount = 0;
-        let isBoss = false;
-        let bossHp = 0;
+        let currentLv = 1, subLv = 1, mode = "", aniId, keys = {};
+        let isHurt = false, killCount = 0, isBoss = false, bossHp = 0;
+        let myScore = 0;
+        let showerTriggered = false;
+
+        let boxes = [];
+        let mapCoins = [];
+        let goalStar = { active: false, x: 0, y: 0, size: 40, isBossStar: false };
 
         const items = ["🌟 파워볼 스타", "👓 매직 안경", "⏳ 마이너스 시계", "💢 가시 폭탄", "💰 코인 주머니"];
-
         const monsterTypes = [
-            { color: "black", speed: 3, w: 40, h: 40 },
-            { color: "green", speed: 2, w: 50, h: 30 },
-            { color: "purple", speed: 4, w: 30, h: 50 }
+            { color: "black", speed: 3, w: 40, h: 40, name: "까만돌이" },
+            { color: "green", speed: 2, w: 50, h: 30, name: "초록거북" },
+            { color: "purple", speed: 4, w: 30, h: 50, name: "보라쓩쓩" },
+            { color: "crimson", speed: 5, w: 45, h: 45, name: "🔥데몬", isDemon: true }
         ];
-        let enemy = { x: 800, y: 310, w: 40, h: 40, speed: 3, color: "black" };
+        let enemy = { x: 800, y: 310, w: 40, h: 40, speed: 3, color: "black", active: true, isDemon: false };
 
         const environments = [
             { bg: "#5c94fc", floor: "#8B4513", name: "맑은 숲" },
             { bg: "#00004d", floor: "#2F4F4F", name: "별이 빛나는 밤" },
             { bg: "#ff7f50", floor: "#800000", name: "노을빛 사막" },
             { bg: "#2E8B57", floor: "#006400", name: "깊고 어두운 숲" },
-            { bg: "#4B0082", floor: "#483D8B", name: "신비한 동굴" }
+            { bg: "#4B0082", floor: "#483D8B", name: "최후의 동굴" } // 레벨 10 보스 배경
         ];
         let currentEnv = environments[0];
 
-        function spawnMonster() {
-            if (killCount >= 2 && subLv < 3) {
-                subLv++;
-                killCount = 0;
+        function startCoinShower() {
+            document.getElementById('item-alert').innerText = "🎊 레벨 5 달성! 하늘에서 코인이 쏟아진다!! 🎊";
+            for (let i = 0; i < 80; i++) {
+                mapCoins.push({
+                    x: Math.random() * canvas.width, y: -(Math.random() * 800) - 50,
+                    w: 20, h: 20, dy: 2 + Math.random() * 4, isShower: true
+                });
+            }
+        }
+
+        function spawnMapObjects() {
+            boxes = [];
+            let boxCount = Math.floor(Math.random() * 3) + 1;
+            for (let i = 0; i < boxCount; i++) {
+                boxes.push({ x: 300 + Math.random() * 400, y: 130 + Math.random() * 70, w: 40, h: 40, hit: false });
             }
 
+            if (!showerTriggered) {
+                let coinCount = Math.floor(Math.random() * 5) + 3;
+                for (let i = 0; i < coinCount; i++) {
+                    mapCoins.push({ x: 200 + Math.random() * 600, y: 250 + Math.random() * 60, w: 20, h: 20, isShower: false });
+                }
+            }
+        }
+
+        function spawnGoalStar(isBossWin) {
+            goalStar.active = true;
+            goalStar.x = canvas.width + 50;
+            goalStar.isBossStar = isBossWin;
+            goalStar.size = isBossWin ? 70 : 40;
+            enemy.active = false;
+            document.getElementById('item-alert').innerText = "✨ 별이 나타났어요! 먹거나 그냥 지나가도 넘어갑니다!";
+        }
+
+        function spawnMonster() {
             document.getElementById('lv-txt').innerText = currentLv + "-" + subLv;
+            enemy.active = true;
+
+            if (currentLv === 5 && !showerTriggered) { showerTriggered = true; startCoinShower(); }
+            spawnMapObjects();
 
             if (subLv === 3) {
                 isBoss = true;
-                bossHp = 2; // ★ 사용자님 요청: 보스 체력 2번 밟기로 수정!
+                bossHp = 2;
                 enemy.color = "darkred";
-                enemy.w = 70; // ★ 사용자님 요청: 보스 크기 70으로 수정!
-                enemy.h = 70;
-                enemy.speed = 2;
-                enemy.x = canvas.width + 50;
-                enemy.y = 350 - enemy.h;
-
+                enemy.w = 70; enemy.h = 70; enemy.speed = 2; enemy.isDemon = false;
+                enemy.x = canvas.width + 50; enemy.y = 350 - enemy.h;
                 currentEnv = environments[4];
-                document.getElementById('item-alert').innerText = "⚠️ 앗! 대장 몬스터가 나타났다! (2번 밟으세요!)";
+                document.getElementById('item-alert').innerText = currentLv === 10 ? "🚨 최종 보스가 나타났다! (2번 밟으세요!)" : "⚠️ 보스가 나타났다! (2번 밟으세요!)";
             } else {
                 isBoss = false;
                 let randomMob = monsterTypes[Math.floor(Math.random() * monsterTypes.length)];
-                enemy.color = randomMob.color;
-                enemy.speed = randomMob.speed;
-                enemy.w = randomMob.w;
-                enemy.h = randomMob.h;
+                enemy.color = randomMob.color; enemy.speed = randomMob.speed;
+                enemy.w = randomMob.w; enemy.h = randomMob.h;
+                enemy.isDemon = randomMob.isDemon || false;
+
                 enemy.x = canvas.width + 50;
                 enemy.y = 350 - enemy.h;
-
                 currentEnv = environments[Math.floor(Math.random() * 4)];
             }
-
             canvas.style.background = currentEnv.bg;
             document.getElementById('env-txt').innerText = currentEnv.name;
         }
@@ -170,18 +247,81 @@
 
         function goToMenu() {
             const id = document.getElementById('user-id').value;
-            if (!id) return alert("아이디를 입력하세요!");
+            if (!id) return alert("닉네임을 입력하세요!");
             document.getElementById('welcome-msg').innerText = `${id}님, 환영합니다!`;
             showScreen('menu-screen');
         }
 
+        function resetStats() { maxHp = 100; hp = 100; jumpPower = -15; defense = 0; coinMultiplier = 1; }
+
         function startMode(m, lv = 1) {
-            mode = m; currentLv = lv; subLv = 1; killCount = 0; hp = 100; player.x = 50; isHurt = false;
-            document.getElementById('mode-txt').innerText = mode === 'free' ? "연습 (무적)" : "본게임";
+            mode = m; currentLv = lv; subLv = 1; killCount = 0; myScore = 0; player.x = 50; isHurt = false;
+            showerTriggered = false; mapCoins = []; boxes = []; goalStar.active = false;
+            resetStats();
+            document.getElementById('mode-txt').innerText = mode === 'free' ? "연습" : (mode === 'ai' ? "AI 데모" : "본게임");
             document.getElementById('hp-txt').innerText = hp;
+            document.getElementById('max-hp-txt').innerText = maxHp;
+            document.getElementById('score-txt').innerText = myScore;
             spawnMonster();
             showScreen('game-screen');
             gameLoop();
+        }
+
+        // ★ 명예의 전당 화면 띄우기 함수
+        function showHallOfFame(isCleared) {
+            cancelAnimationFrame(aniId); // 게임 완전히 멈춤
+
+            // 유저 닉네임 가져오기 (없으면 '용사')
+            let userName = document.getElementById('user-id').value || "용사";
+
+            if (isCleared) {
+                document.getElementById('clear-msg').innerText = "🎉 축하합니다! 최종 레벨 10 클리어! 🎉";
+            } else {
+                document.getElementById('clear-msg').innerText = "💀 게임 오버... 명예의 전당에 등록되었습니다.";
+                document.getElementById('clear-msg').style.color = "red";
+            }
+
+            document.getElementById('final-score-txt').innerText = myScore;
+            document.getElementById('player-name-txt').innerText = userName;
+            document.getElementById('player-score-txt').innerText = myScore;
+
+            showScreen('fame-screen');
+        }
+
+        function processLevelUp(ateStar) {
+            goalStar.active = false;
+            if (goalStar.isBossStar) {
+                // ★ 레벨 10을 클리어했을 때의 특별한 엔딩 처리
+                if (currentLv === 10) {
+                    myScore += 100; // 최종 보너스 점수 100점!
+                    document.getElementById('score-txt').innerText = myScore;
+                    document.getElementById('item-alert').innerText = "🌟 최종 레벨 클리어! 100점 획득! 🌟";
+
+                    // 1초 뒤에 명예의 전당으로 자동 이동!
+                    setTimeout(() => { showHallOfFame(true); }, 1000);
+                    return; // 더 이상 레벨업을 진행하지 않음!
+                }
+
+                // 일반 레벨 보상 (1~9레벨)
+                let rewardMsg = "";
+                if (currentLv === 1) { maxHp += 20; hp = maxHp; rewardMsg = "❤️ 최대 HP 20 증가 및 회복!"; }
+                else if (currentLv === 2) { jumpPower = -18; rewardMsg = "👟 하이 점프 신발 획득!"; }
+                else if (currentLv === 3) { defense = 5; rewardMsg = "🛡️ 강철 피부 획득!"; }
+                else if (currentLv === 4) { coinMultiplier = 2; rewardMsg = "🧲 코인 점수 2배 버프!"; }
+                else { hp = maxHp; rewardMsg = "❤️ HP 전체 회복!"; }
+
+                document.getElementById('max-hp-txt').innerText = maxHp;
+                document.getElementById('hp-txt').innerText = hp;
+
+                let prefixMsg = ateStar ? "🎉 별 획득! 메인 레벨 클리어!" : "💨 별을 지나쳐서 메인 레벨 통과!";
+                setTimeout(() => {
+                    alert(prefixMsg + "\n보상: " + rewardMsg + "\n다음 레벨로 넘어갑니다!");
+                    currentLv++; subLv = 1; killCount = 0; showerTriggered = false; spawnMonster();
+                }, 500);
+            } else {
+                if (!ateStar) document.getElementById('item-alert').innerText = "💨 슝~ 다음 구역으로 넘어갑니다!";
+                subLv++; killCount = 0; spawnMonster();
+            }
         }
 
         function gameLoop() {
@@ -191,105 +331,151 @@
             ctx.fillStyle = currentEnv.floor;
             ctx.fillRect(0, 350, canvas.width, 50);
 
-            // 2. 몬스터 이동
-            enemy.x -= (enemy.speed + (currentLv * 0.2));
-            if (enemy.x < -150) {
-                killCount++;
-                spawnMonster();
-            }
+            // 2. 몬스터
+            if (enemy.active) {
+                let currentSpeed = Math.min(enemy.speed + (currentLv * 0.2), 12);
+                enemy.x -= currentSpeed;
 
-            ctx.fillStyle = enemy.color;
-            ctx.fillRect(enemy.x, enemy.y, enemy.w, enemy.h);
+                if (enemy.isDemon) enemy.y = 250 + Math.sin(Date.now() / 150) * 50;
 
-            // 3. 충돌 감지 로직
-            let isColliding = (player.x < enemy.x + enemy.w && player.x + player.w > enemy.x &&
-                player.y < enemy.y + enemy.h && player.y + player.h > enemy.y);
-
-            if (isColliding && !isHurt) {
-                // 위에서 밟았을 때
-                if (player.dy > 0 && player.y + player.h < enemy.y + 20) {
-                    player.dy = -12;
-
+                if (enemy.x < -150) {
                     if (isBoss) {
-                        bossHp--;
-                        if (bossHp <= 0) {
-                            document.getElementById('item-alert').innerText = "🎉 대장 몬스터 처치! 레벨 클리어!";
-                            setTimeout(() => {
-                                alert("메인 레벨 클리어! 다음 레벨로 넘어갑니다!");
-                                currentLv++;
-                                subLv = 1;
-                                killCount = 0;
-                                spawnMonster();
-                            }, 1000);
-                            enemy.x = -200;
-                        } else {
-                            document.getElementById('item-alert').innerText = `💥 대장 몬스터를 밟았다! (남은 체력: ${bossHp})`;
+                        enemy.x = canvas.width + 50;
+                        if (mode === 'ai') {
+                            bossHp--;
+                            if (bossHp <= 0) {
+                                document.getElementById('item-alert').innerText = "🎉 보스 처치! 왕별이 나타납니다!";
+                                spawnGoalStar(true);
+                            }
                         }
                     } else {
-                        document.getElementById('item-alert').innerText = "💥 몬스터 처치 성공!";
                         killCount++;
-                        spawnMonster();
+                        if (killCount >= 2 && subLv < 3) spawnGoalStar(false);
+                        else spawnMonster();
                     }
                 }
-                // 옆에서 부딪혔을 때 (데미지)
-                else {
-                    if (mode === 'play') {
-                        let damage = isBoss ? (10 + currentLv) : (5 + currentLv);
-                        hp -= damage;
-                        isHurt = true;
-                        player.x -= 60; // 뒤로 튕겨남
 
-                        // ★ 버그 수정: 마리오가 화면 왼쪽 밖으로 나가지 못하게 막기!
-                        if (player.x < 0) {
-                            player.x = 0;
-                        }
+                ctx.fillStyle = enemy.color; ctx.fillRect(enemy.x, enemy.y, enemy.w, enemy.h);
 
-                        if (hp <= 0) {
-                            hp = 0;
-                            document.getElementById('hp-txt').innerText = hp;
-                            document.getElementById('item-alert').innerText = "HP가 0이 되었습니다! 게임 오버!";
-                            setTimeout(() => { alert("게임 오버! 메뉴로 돌아갑니다."); showScreen('menu-screen'); }, 500);
-                            return;
+                let isColliding = (player.x < enemy.x + enemy.w && player.x + player.w > enemy.x &&
+                    player.y < enemy.y + enemy.h && player.y + player.h > enemy.y);
+                if (isColliding && !isHurt) {
+                    let isPerfectStomp = (player.dy > 0 && player.y + player.h < enemy.y + 30) || (mode === 'ai');
+
+                    if (isPerfectStomp) {
+                        player.dy = -12;
+                        if (isBoss) {
+                            bossHp--;
+                            if (bossHp <= 0) {
+                                document.getElementById('item-alert').innerText = "🎉 보스 처치! 왕별이 나타납니다!";
+                                spawnGoalStar(true);
+                            } else {
+                                document.getElementById('item-alert').innerText = `💥 보스를 밟았다! (남은 체력: ${bossHp})`;
+                            }
                         } else {
-                            document.getElementById('hp-txt').innerText = hp;
-                            document.getElementById('item-alert').innerText = `🩸 앗! 부딪혀서 HP가 ${damage} 깎였습니다!`;
-                            setTimeout(() => { isHurt = false; }, 1500);
+                            let mobName = enemy.isDemon ? "🔥데몬" : "몬스터";
+                            document.getElementById('item-alert').innerText = `💥 ${mobName} 처치 성공! (+5점)`;
+                            myScore += (5 * coinMultiplier);
+                            document.getElementById('score-txt').innerText = myScore;
+                            killCount++;
+                            if (killCount >= 2 && subLv < 3) spawnGoalStar(false);
+                            else spawnMonster();
                         }
-                    } else if (mode === 'free') {
-                        document.getElementById('item-alert').innerText = "🛡️ 연습 모드라서 다치지 않아요!";
+                    } else {
+                        if (mode === 'play') {
+                            let damage = isBoss ? (10 + currentLv) : (enemy.isDemon ? 8 + currentLv : 5 + currentLv);
+                            damage -= defense; if (damage < 1) damage = 1;
+
+                            hp -= damage; isHurt = true; player.x -= 60;
+                            if (player.x < 0) player.x = 0;
+                            if (hp <= 0) {
+                                document.getElementById('hp-txt').innerText = 0;
+                                document.getElementById('item-alert').innerText = "게임 오버!";
+                                // ★ 죽었을 때도 명예의 전당으로 이동!
+                                setTimeout(() => { showHallOfFame(false); }, 1000);
+                                return;
+                            } else {
+                                document.getElementById('hp-txt').innerText = hp;
+                                document.getElementById('item-alert').innerText = `🩸 HP가 ${damage} 깎였습니다!`;
+                                setTimeout(() => { isHurt = false; }, 1500);
+                            }
+                        }
                     }
                 }
             }
 
-            // 4. 캐릭터 조작 (키보드 이동 시에도 화면 밖으로 못 나가게 방어)
+            // 3. 목표 별 
+            if (goalStar.active) {
+                goalStar.x -= 2;
+                goalStar.y = 220 + Math.sin(Date.now() / 200) * 20;
+                ctx.font = goalStar.size + "px Arial";
+                ctx.fillText(goalStar.isBossStar ? "🌟" : "⭐", goalStar.x, goalStar.y + goalStar.size);
+
+                if (player.x < goalStar.x + goalStar.size && player.x + player.w > goalStar.x &&
+                    player.y < goalStar.y + goalStar.size && player.y + player.h > goalStar.y) {
+                    processLevelUp(true);
+                } else if (goalStar.x < -100) {
+                    processLevelUp(false);
+                }
+            }
+
+            // 4. 캐릭터 조작
             if (mode === 'ai') {
+                hp = maxHp;
                 player.x += 2.5;
-                if (player.x > 300 && player.x < 310 && !player.jumping) { player.dy = -15; player.jumping = true; }
                 if (player.x > canvas.width) player.x = 0;
-            } else {
-                if (keys['ArrowRight'] && player.x < canvas.width - player.w) player.x += 5; // 오른쪽 벽 방어
-                if (keys['ArrowLeft'] && player.x > 0) player.x -= 5; // ★ 왼쪽 벽 방어
-                if (keys[' '] && !player.jumping) { player.dy = -15; player.jumping = true; }
+
+                if (!player.jumping) {
+                    if (enemy.active && enemy.x > player.x) {
+                        let triggerDist = isBoss ? 130 + (currentLv * 10) : 90 + (currentLv * 5);
+                        if (enemy.x - player.x < triggerDist) {
+                            player.dy = jumpPower; player.jumping = true;
+                        }
+                    } else {
+                        for (let b of boxes) {
+                            if (!b.hit && b.x > player.x && b.x - player.x < 70) {
+                                player.dy = jumpPower; player.jumping = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            else {
+                if (keys['ArrowRight'] && player.x < canvas.width - player.w) player.x += 5;
+                if (keys['ArrowLeft'] && player.x > 0) player.x -= 5;
+                if (keys[' '] && !player.jumping) { player.dy = jumpPower; player.jumping = true; }
             }
 
             player.dy += 0.8; player.y += player.dy;
             if (player.y > 310) { player.y = 310; player.dy = 0; player.jumping = false; }
-
             if (!isHurt || Math.floor(Date.now() / 150) % 2 === 0) {
-                ctx.fillStyle = (mode === 'ai') ? "purple" : "red";
-                ctx.fillRect(player.x, player.y, player.w, player.h);
+                ctx.fillStyle = (mode === 'ai') ? "purple" : "red"; ctx.fillRect(player.x, player.y, player.w, player.h);
             }
 
             // 5. 물음표 박스
-            ctx.fillStyle = "yellow";
-            ctx.fillRect(box.x, box.y, box.w, box.h);
-            ctx.fillStyle = "black"; ctx.font = "30px Arial"; ctx.fillText("?", box.x + 15, box.y + 35);
+            for (let i = 0; i < boxes.length; i++) {
+                let b = boxes[i]; b.x -= 1.5;
+                ctx.fillStyle = b.hit ? "brown" : "yellow"; ctx.fillRect(b.x, b.y, b.w, b.h);
+                if (!b.hit) { ctx.fillStyle = "black"; ctx.font = "25px Arial"; ctx.fillText("?", b.x + 12, b.y + 30); }
+                if (!b.hit && player.x < b.x + b.w && player.x + player.w > b.x && player.y < b.y + b.h && player.y > b.y && player.dy < 0) {
+                    player.dy = 3; b.hit = true;
+                    const get = items[Math.floor(Math.random() * items.length)];
+                    document.getElementById('item-alert').innerText = "🎁 " + get + " 획득!";
+                }
+            }
 
-            if (player.x < box.x + box.w && player.x + player.w > box.x &&
-                player.y < box.y + box.h && player.y > box.y && player.dy < 0) {
-                player.dy = 5;
-                const get = items[Math.floor(Math.random() * items.length)];
-                document.getElementById('item-alert').innerText = "🎁 " + get + " 획득!";
+            // 6. 코인
+            for (let i = mapCoins.length - 1; i >= 0; i--) {
+                let c = mapCoins[i];
+                if (c.isShower) { c.y += c.dy; } else { c.x -= 2; }
+                ctx.fillStyle = "gold"; ctx.beginPath(); ctx.arc(c.x + 10, c.y + 10, 10, 0, Math.PI * 2); ctx.fill();
+
+                if (player.x < c.x + 20 && player.x + player.w > c.x && player.y < c.y + 20 && player.y + player.h > c.y) {
+                    myScore += (1 * coinMultiplier);
+                    document.getElementById('score-txt').innerText = myScore;
+                    mapCoins.splice(i, 1);
+                }
             }
 
             aniId = requestAnimationFrame(gameLoop);
